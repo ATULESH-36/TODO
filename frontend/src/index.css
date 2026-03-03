@@ -1,0 +1,62 @@
+@import "tailwindcss";
+
+@theme {
+  --color-sidebar: #f8f7f4;
+  --color-surface: #ffffff;
+  --color-panel: #fafaf8;
+  --color-border: #e8e6e1;
+  --color-border-light: #f0eee9;
+  --color-text-primary: #1a1a1a;
+  --color-text-secondary: #6b6b6b;
+  --color-text-tertiary: #9b9b9b;
+  --color-accent: #4f6ef7;
+  --color-accent-light: #eef1fe;
+  --color-accent-hover: #3b5ce4;
+  --color-danger: #e54d42;
+  --color-danger-light: #fef2f2;
+  --color-success: #22c55e;
+  --color-success-light: #f0fdf4;
+  --color-tag-blue: #dbeafe;
+  --color-tag-purple: #ede9fe;
+  --color-tag-green: #dcfce7;
+  --color-tag-orange: #ffedd5;
+  --color-tag-red: #fee2e2;
+  --color-tag-text-blue: #1e40af;
+  --color-tag-text-purple: #5b21b6;
+  --color-tag-text-green: #166534;
+  --color-tag-text-orange: #9a3412;
+  --color-tag-text-red: #991b1b;
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-text-tertiary); }
+
+/* Smooth transitions */
+.transition-smooth {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
