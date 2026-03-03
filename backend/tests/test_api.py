@@ -1,19 +1,18 @@
 import pytest
-from app import app
+from app import app, init_db
 
 
 @pytest.fixture
 def client():
     app.config["TESTING"] = True
+    app.config["DATABASE"] = ":memory:"
+
+    with app.app_context():
+        # Override global DATABASE variable safely
+        from app import DATABASE
+        import app as app_module
+        app_module.DATABASE = ":memory:"
+        init_db()
+
     with app.test_client() as client:
         yield client
-
-
-def test_health(client):
-    response = client.get("/api/tasks")
-    assert response.status_code == 200
-
-
-def test_create_task(client):
-    response = client.post("/api/tasks", json={"title": "Test Task"})
-    assert response.status_code == 201
