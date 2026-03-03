@@ -17,4 +17,3 @@ def test_health(client):
 def test_create_task(client):
     response = client.post("/api/tasks", json={"title": "Test Task"})
     assert response.status_code == 201
-    
