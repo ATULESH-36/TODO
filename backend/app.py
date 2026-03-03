@@ -1,19 +1,26 @@
 import os
 import json
 import sqlite3
-from datetime import datetime, date
+from datetime import date
 from flask import Flask, request, jsonify, g
 from flask_cors import CORS
 from dotenv import load_dotenv
 
 load_dotenv()
+
 app = Flask(__name__)
 CORS(app)
+
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-secret")
-DATABASE = os.environ.get("DATABASE_PATH", os.path.join(os.path.dirname(__file__), "todo.db"))
+
+DATABASE = os.environ.get(
+    "DATABASE_PATH",
+    os.path.join(os.path.dirname(__file__), "todo.db"),
+)
 
 
 # ── Database helpers ──────────────────────────────────────────────────────────
+
 
 def get_db():
     if "db" not in g:
@@ -32,7 +39,8 @@ def close_db(exc):
 
 def init_db():
     db = get_db()
-    db.executescript("""
+    db.executescript(
+        """
         CREATE TABLE IF NOT EXISTS lists (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
@@ -60,16 +68,17 @@ def init_db():
             completed INTEGER DEFAULT 0,
             FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
         );
-    """)
+        """
+    )
     db.commit()
 
 
 def seed_db():
     db = get_db()
+
     if db.execute("SELECT COUNT(*) FROM lists").fetchone()[0] > 0:
         return
 
-    # Seed lists
     db.executemany(
         "INSERT INTO lists (name, icon) VALUES (?, ?)",
         [("Personal", "🏠"), ("Work", "💼")],
@@ -77,21 +86,66 @@ def seed_db():
 
     today = date.today().isoformat()
 
-    # Seed tasks
     tasks = [
-        ("Design landing page mockup", "Create high-fidelity mockups for the new landing page redesign", 0, today, 2, '["design", "urgent"]'),
-        ("Weekly team standup", "Prepare agenda and talking points for the weekly standup", 0, today, 2, '["meeting"]'),
-        ("Buy groceries", "Milk, eggs, bread, vegetables, fruits", 0, today, 1, '["shopping"]'),
-        ("Read 30 pages of book", "Continue reading 'Atomic Habits' by James Clear", 1, today, 1, '["reading", "self-improvement"]'),
-        ("Fix authentication bug", "Users are getting logged out unexpectedly after 10 minutes", 0, today, 2, '["bug", "urgent"]'),
-        ("Plan weekend trip", "Research destinations and book accommodation", 0, today, 1, '["travel", "personal"]'),
+        (
+            "Design landing page mockup",
+            "Create high-fidelity mockups for the new landing page redesign",
+            0,
+            today,
+            2,
+            '["design", "urgent"]',
+        ),
+        (
+            "Weekly team standup",
+            "Prepare agenda and talking points for the weekly standup",
+            0,
+            today,
+            2,
+            '["meeting"]',
+        ),
+        (
+            "Buy groceries",
+            "Milk, eggs, bread, vegetables, fruits",
+            0,
+            today,
+            1,
+            '["shopping"]',
+        ),
+        (
+            "Read 30 pages of book",
+            "Continue reading 'Atomic Habits' by James Clear",
+            1,
+            today,
+            1,
+            '["reading", "self-improvement"]',
+        ),
+        (
+            "Fix authentication bug",
+            "Users are getting logged out unexpectedly after 10 minutes",
+            0,
+            today,
+            2,
+            '["bug", "urgent"]',
+        ),
+        (
+            "Plan weekend trip",
+            "Research destinations and book accommodation",
+            0,
+            today,
+            1,
+            '["travel", "personal"]',
+        ),
     ]
-    cursor = db.executemany(
-        "INSERT INTO tasks (title, description, completed, due_date, list_id, tags) VALUES (?, ?, ?, ?, ?, ?)",
+
+    db.executemany(
+        """
+        INSERT INTO tasks
+        (title, description, completed, due_date, list_id, tags)
+        VALUES (?, ?, ?, ?, ?, ?)
+        """,
         tasks,
     )
 
-    # Seed subtasks
     subtasks = [
         (1, "Research competitor designs", 1),
         (1, "Create wireframes", 0),
@@ -104,14 +158,20 @@ def seed_db():
         (5, "Check token expiry logic", 0),
         (5, "Write unit tests", 0),
     ]
+
     db.executemany(
-        "INSERT INTO subtasks (task_id, title, completed) VALUES (?, ?, ?)",
+        """
+        INSERT INTO subtasks (task_id, title, completed)
+        VALUES (?, ?, ?)
+        """,
         subtasks,
     )
+
     db.commit()
 
 
-# ── Serialisation helpers ─────────────────────────────────────────────────────
+# ── Serialization helpers ─────────────────────────────────────────────────────
+
 
 def task_to_dict(row):
     d = dict(row)
@@ -128,9 +188,12 @@ def subtask_to_dict(row):
 
 # ── List endpoints ────────────────────────────────────────────────────────────
 
+
 @app.route("/api/lists", methods=["GET"])
 def get_lists():
-    rows = get_db().execute("SELECT * FROM lists ORDER BY id").fetchall()
+    rows = get_db().execute(
+        "SELECT * FROM lists ORDER BY id"
+    ).fetchall()
     return jsonify([dict(r) for r in rows])
 
 
@@ -139,12 +202,23 @@ def create_list():
     data = request.get_json(force=True)
     name = data.get("name", "").strip()
     icon = data.get("icon", "📁")
+
     if not name:
         return jsonify({"error": "name is required"}), 400
+
     db = get_db()
-    cur = db.execute("INSERT INTO lists (name, icon) VALUES (?, ?)", (name, icon))
+
+    cur = db.execute(
+        "INSERT INTO lists (name, icon) VALUES (?, ?)",
+        (name, icon),
+    )
     db.commit()
-    row = db.execute("SELECT * FROM lists WHERE id = ?", (cur.lastrowid,)).fetchone()
+
+    row = db.execute(
+        "SELECT * FROM lists WHERE id = ?",
+        (cur.lastrowid,),
+    ).fetchone()
+
     return jsonify(dict(row)), 201
 
 
@@ -158,23 +232,33 @@ def delete_list(list_id):
 
 # ── Task endpoints ────────────────────────────────────────────────────────────
 
+
 @app.route("/api/tasks", methods=["GET"])
 def get_tasks():
     db = get_db()
     list_filter = request.args.get("list")
+
     if list_filter:
         rows = db.execute(
-            "SELECT * FROM tasks WHERE list_id = ? ORDER BY created_at DESC", (list_filter,)
+            "SELECT * FROM tasks WHERE list_id = ? ORDER BY created_at DESC",
+            (list_filter,),
         ).fetchall()
     else:
-        rows = db.execute("SELECT * FROM tasks ORDER BY created_at DESC").fetchall()
+        rows = db.execute(
+            "SELECT * FROM tasks ORDER BY created_at DESC"
+        ).fetchall()
 
     tasks = []
+
     for row in rows:
         t = task_to_dict(row)
-        subs = db.execute("SELECT * FROM subtasks WHERE task_id = ?", (t["id"],)).fetchall()
+        subs = db.execute(
+            "SELECT * FROM subtasks WHERE task_id = ?",
+            (t["id"],),
+        ).fetchall()
         t["subtasks"] = [subtask_to_dict(s) for s in subs]
         tasks.append(t)
+
     return jsonify(tasks)
 
 
@@ -182,12 +266,18 @@ def get_tasks():
 def create_task():
     data = request.get_json(force=True)
     title = data.get("title", "").strip()
+
     if not title:
         return jsonify({"error": "title is required"}), 400
 
     db = get_db()
+
     cur = db.execute(
-        "INSERT INTO tasks (title, description, due_date, list_id, tags) VALUES (?, ?, ?, ?, ?)",
+        """
+        INSERT INTO tasks
+        (title, description, due_date, list_id, tags)
+        VALUES (?, ?, ?, ?, ?)
+        """,
         (
             title,
             data.get("description", ""),
@@ -196,23 +286,41 @@ def create_task():
             json.dumps(data.get("tags", [])),
         ),
     )
+
     db.commit()
     task_id = cur.lastrowid
 
-    # Handle subtasks
     for sub in data.get("subtasks", []):
         sub_title = sub.get("title", "").strip()
         if sub_title:
             db.execute(
-                "INSERT INTO subtasks (task_id, title, completed) VALUES (?, ?, ?)",
-                (task_id, sub_title, int(sub.get("completed", False))),
+                """
+                INSERT INTO subtasks (task_id, title, completed)
+                VALUES (?, ?, ?)
+                """,
+                (
+                    task_id,
+                    sub_title,
+                    int(sub.get("completed", False)),
+                ),
             )
+
     db.commit()
 
-    row = db.execute("SELECT * FROM tasks WHERE id = ?", (task_id,)).fetchone()
+    row = db.execute(
+        "SELECT * FROM tasks WHERE id = ?",
+        (task_id,),
+    ).fetchone()
+
     t = task_to_dict(row)
-    subs = db.execute("SELECT * FROM subtasks WHERE task_id = ?", (task_id,)).fetchall()
+
+    subs = db.execute(
+        "SELECT * FROM subtasks WHERE task_id = ?",
+        (task_id,),
+    ).fetchall()
+
     t["subtasks"] = [subtask_to_dict(s) for s in subs]
+
     return jsonify(t), 201
 
 
@@ -221,15 +329,21 @@ def update_task(task_id):
     data = request.get_json(force=True)
     db = get_db()
 
-    existing = db.execute("SELECT * FROM tasks WHERE id = ?", (task_id,)).fetchone()
+    existing = db.execute(
+        "SELECT * FROM tasks WHERE id = ?",
+        (task_id,),
+    ).fetchone()
+
     if not existing:
         return jsonify({"error": "task not found"}), 404
 
     db.execute(
-        """UPDATE tasks
-           SET title = ?, description = ?, completed = ?, due_date = ?,
-               list_id = ?, tags = ?, updated_at = CURRENT_TIMESTAMP
-           WHERE id = ?""",
+        """
+        UPDATE tasks
+        SET title = ?, description = ?, completed = ?, due_date = ?,
+            list_id = ?, tags = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+        """,
         (
             data.get("title", existing["title"]),
             data.get("description", existing["description"]),
@@ -241,22 +355,40 @@ def update_task(task_id):
         ),
     )
 
-    # Replace subtasks if provided
     if "subtasks" in data:
         db.execute("DELETE FROM subtasks WHERE task_id = ?", (task_id,))
+
         for sub in data["subtasks"]:
             sub_title = sub.get("title", "").strip()
             if sub_title:
                 db.execute(
-                    "INSERT INTO subtasks (task_id, title, completed) VALUES (?, ?, ?)",
-                    (task_id, sub_title, int(sub.get("completed", False))),
+                    """
+                    INSERT INTO subtasks (task_id, title, completed)
+                    VALUES (?, ?, ?)
+                    """,
+                    (
+                        task_id,
+                        sub_title,
+                        int(sub.get("completed", False)),
+                    ),
                 )
+
     db.commit()
 
-    row = db.execute("SELECT * FROM tasks WHERE id = ?", (task_id,)).fetchone()
+    row = db.execute(
+        "SELECT * FROM tasks WHERE id = ?",
+        (task_id,),
+    ).fetchone()
+
     t = task_to_dict(row)
-    subs = db.execute("SELECT * FROM subtasks WHERE task_id = ?", (task_id,)).fetchall()
+
+    subs = db.execute(
+        "SELECT * FROM subtasks WHERE task_id = ?",
+        (task_id,),
+    ).fetchall()
+
     t["subtasks"] = [subtask_to_dict(s) for s in subs]
+
     return jsonify(t)
 
 
@@ -274,6 +406,11 @@ with app.app_context():
     init_db()
     seed_db()
 
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=os.getenv("FLASK_ENV") == "development")
+    app.run(
+        host="0.0.0.0",
+        port=port,
+        debug=os.getenv("FLASK_ENV") == "development",
+    )
