@@ -4,10 +4,12 @@ import sqlite3
 from datetime import datetime, date
 from flask import Flask, request, jsonify, g
 from flask_cors import CORS
+from dotenv import load_dotenv
 
+load_dotenv()
 app = Flask(__name__)
 CORS(app)
-
+app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-secret")
 DATABASE = os.environ.get("DATABASE_PATH", os.path.join(os.path.dirname(__file__), "todo.db"))
 
 
@@ -274,4 +276,4 @@ with app.app_context():
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=True)
+    app.run(host="0.0.0.0", port=port, debug=os.getenv("FLASK_ENV") == "development")
